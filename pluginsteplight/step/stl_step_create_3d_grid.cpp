@@ -105,10 +105,10 @@ void STL_STEP_Create_3D_Grid::compute()
         size_t n_points = inPointCloud->pointCloudIndex()->size();
         CT_PointIterator itPoint(inPointCloud->pointCloudIndex());
 
-        int* ptrVect = grid_3d->get_data();
-        int i;
-        #pragma omp parallel for reduction(+:ptrVect[0:n_points])
-        for( i = 0; i <  n_points; i++ )
+        //int* ptrVect = grid_3d->get_data();
+        //int i;
+        //#pragma omp parallel for reduction(+:ptrVect[0:n_points])
+        for(  CT_PointIterator itPoint(inPointCloud->pointCloudIndex());itPoint.hasNext();i_point++ )
         {
             if( i_point % 100 == 0 )
             {
@@ -117,7 +117,7 @@ void STL_STEP_Create_3D_Grid::compute()
 
             if( isStopped() )
             {
-                //return ;
+                return ;
             }
 
 
