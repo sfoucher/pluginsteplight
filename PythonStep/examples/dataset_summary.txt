@@ -1,0 +1,16 @@
+Two Cylinders Dataset Summary
+==============================
+
+File: /home/sfoucher/DEV/pluginsteplight/twoCylinders.txt
+Number of points: 3610
+Dataset bounds:
+  X: -0.999833 to 0.999990
+  Y: -1.410226 to 3.489956
+  Z: 0.202604 to 4.935661
+Mean position: [-0.0024371   1.67798114  2.12856532]
+Standard deviation: [0.70722908 1.47878059 1.34172117]
+Normal vector mean: [-0.00341935 -0.00103968  0.00075107]
+Normal vector std: [0.70842298 0.70413464 0.04814512]
+Cluster centroids:
+  Cluster 1: [ 0.0144256  -0.03092432  1.05131054]
+  Cluster 2: [-0.01121649  2.56770615  2.68942754]
