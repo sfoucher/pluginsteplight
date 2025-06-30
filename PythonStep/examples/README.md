@@ -56,6 +56,36 @@ This directory contains example scripts demonstrating how to use the PythonStep 
 ![Active Contours Visualization](active_contours_visualization.png)
 *Active contours workflow showing synthetic grid data and extracted characteristic curves*
 
+### 5. `active_contours_two_cylinders_example.py`
+**Purpose:** Demonstrates the Active Contours workflow using real point cloud data from `twoCylinders.txt`.
+**Features:**
+  - Loads point cloud data from `twoCylinders.txt`
+  - Creates 3D grid from real point cloud data
+  - Applies active contours algorithm to extract curves from real data
+  - Enhanced visualization with multiple 2D projections (XY, XZ, YZ)
+  - Comprehensive analysis report with point cloud statistics
+  - **Output:**
+    - `two_cylinders_active_contours_visualization.png` - 3D and 2D visualizations of grid and curves
+    - `two_cylinders_extracted_curves.txt` - Coordinates of extracted curve points
+    - `two_cylinders_analysis_report.txt` - Comprehensive analysis report with point cloud and grid statistics
+
+### 6. `grid_creation_two_cylinders_example.py`
+- **Purpose:** Demonstrates the Python implementation of STL_STEPCreateGrid3D::compute() using ray tracing to fill a 3D grid from point cloud data.
+- **Features:**
+  - Loads point cloud and normals from `twoCylinders.txt`
+  - Uses multi-threaded ray tracing algorithm (3D Bresenham/Woo traversal)
+  - Creates filled 3D grid by tracing rays along normal vectors
+  - Visualizes 2D slices of the resulting grid at different Z levels
+  - Saves grid data and ray length information
+  - **Output:**
+    - `output_grid_creation/` directory containing:
+      - `grid_slice_2_*.png` - 2D slice visualizations at different Z levels
+      - `grid_data.npy` - 3D grid data as numpy array
+      - `ray_length_grid.npy` - Ray length information for each grid cell
+
+![Grid Creation Visualization](output_grid_creation/grid_slice_2_0.png)
+*2D slice visualization showing the filled grid from ray tracing*
+
 #### Visualization Examples
 
 **3D Scatter Plot with Normal Vectors:**
@@ -93,6 +123,8 @@ python3 basic_workflow_example.py
 python3 simple_workflow_example.py
 python3 visualize_3d_dataset.py
 python3 active_contours_example.py
+python3 active_contours_two_cylinders_example.py
+python3 grid_creation_two_cylinders_example.py
 ```
 
 ## Data File
@@ -109,10 +141,12 @@ After running the examples, you should see files like:
 - `statistical_analysis.png` - Statistical distributions
 - `cluster_visualization.png` - Clustering results
 - `active_contours_visualization.png` - Active contours curve extraction
+- `two_cylinders_active_contours_visualization.png` - Active contours on real data
 - `local_maxima_results.txt` - Detected peak coordinates
 - `extracted_curves.txt` - Extracted curve coordinates
 - `grid_statistics.txt` - Grid analysis statistics
 - `dataset_summary.txt` - Dataset overview
+- `output_grid_creation/` - Grid creation results with slice images and .npy files
 
 ---
 For more information, see the main project README or the script docstrings. 
