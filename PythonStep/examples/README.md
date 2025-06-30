@@ -41,6 +41,21 @@ This directory contains example scripts demonstrating how to use the PythonStep 
     - `interactive_3d_plot.png` (if interactive backend is available)
     - `dataset_summary.txt`
 
+### 4. `active_contours_example.py`
+- **Purpose:** Demonstrates the Active Contours workflow for extracting characteristic curves from 3D grid data.
+- **Features:**
+  - Creates synthetic 3D grid data with curve-like structures (straight line, helix, S-curve)
+  - Applies the active contours algorithm to extract curves
+  - Visualizes the grid data and extracted curves in 3D and 2D projections
+  - Analyzes curve properties (length, number of points, bounding box)
+  - **Output:**
+    - `active_contours_visualization.png` - 3D and 2D visualizations of grid and curves
+    - `extracted_curves.txt` - Coordinates of extracted curve points
+    - `grid_statistics.txt` - Grid analysis statistics
+
+![Active Contours Visualization](active_contours_visualization.png)
+*Active contours workflow showing synthetic grid data and extracted characteristic curves*
+
 #### Visualization Examples
 
 **3D Scatter Plot with Normal Vectors:**
@@ -77,6 +92,7 @@ Run any example from this directory:
 python3 basic_workflow_example.py
 python3 simple_workflow_example.py
 python3 visualize_3d_dataset.py
+python3 active_contours_example.py
 ```
 
 ## Data File
@@ -92,7 +108,9 @@ After running the examples, you should see files like:
 - `density_projections.png` - 2D density projections
 - `statistical_analysis.png` - Statistical distributions
 - `cluster_visualization.png` - Clustering results
+- `active_contours_visualization.png` - Active contours curve extraction
 - `local_maxima_results.txt` - Detected peak coordinates
+- `extracted_curves.txt` - Extracted curve coordinates
 - `grid_statistics.txt` - Grid analysis statistics
 - `dataset_summary.txt` - Dataset overview
 

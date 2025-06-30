@@ -1,0 +1,1108 @@
+Computers & Graphics 66 (2017) 23–33
+
+Contents lists available at ScienceDirect
+
+Computers & Graphics
+journal homepage: www.elsevier.com/locate/cag
+
+Special Issue on SMI 2017
+
+Extraction of tubular shapes from dense point clouds and application
+to tree reconstruction from laser scanned data
+Joris Ravaglia a,b,∗, Alexandra Bac a, Richard A. Fournier b
+a
+b
+
+Aix-Marseille Université, laboratoire des sciences de l’information et des systèmes (LSIS), UMR CNRS 7296, France
+Centre d’applications et de recherches en télédétection (CARTEL), Département de géomatique appliquée, Université de Sherbrooke, Sherbrooke QC, Canada
+
+a r t i c l e
+
+i n f o
+
+Article history:
+Received 4 April 2017
+Revised 20 May 2017
+Accepted 25 May 2017
+Available online 3 June 2017
+Keywords:
+Tubular shape
+Point cloud
+Shape reconstruction
+Hough transform
+Active contours
+
+a b s t r a c t
+We propose a novel method for detecting and reconstructing tubular shapes in dense, noisy, occluded
+and unorganized point clouds. The STEP method (Snakes for Tuboid Extraction from Point clouds) was
+originally designed to reconstruct woody parts of trees scanned with terrestrial LiDAR in natural forest
+environments. The STEP method deals with the acquisition artefacts of point clouds from terrestrial LiDAR
+which include three important constraints: a varying sampling rate, signal occlusion, and the presence of
+noise. The STEP method uses a combination of an original Hough transform and a new form of growing
+active contours (also referred to as “snakes”) to overcome these constraints while being able to handle
+large data sets. The framework proves to be resilient under various conditions as a general shape recognition and reconstruction tool. In the ﬁeld of forestry, the method was demonstrated to be robust to
+the previously highlighted limitations (with errors in the range of manual forest measurements, that is
+1 cm diameter error). The STEP method has therefore the potential to improve current forest inventories
+as well as being applied to a wide array of other applications, such as pipeline reconstruction and the
+assessment of industrial structures.
+© 2017 Elsevier Ltd. All rights reserved.
+
+1. Introduction
+With the increasing popularity of laser scanning technologies
+and photogrammetry, point cloud processing turned into an important ﬁeld of research. The acquired dense 3D point clouds describe objects’ surfaces with high accuracy (e.g. millimetric level
+for laser scanning). In spite of this accuracy, data acquired by such
+sensing technologies share common constraints such as non homogeneous sampling, occlusion and noise. Therefore, advanced point
+cloud analysis is required to segment, model and reconstruct objects of interest from a raw point clouds prior building any higherlevel knowledge.
+A large set of real-world objects are composed of tubular
+shapes, such as pipes, poles, stems or monument pillars. Extraction
+of tubular shapes from point clouds is of major importance, since
+they can be used to monitor, among others, factory constructions,
+reﬁnery pipelines, or power plant structures. Tubular shape extraction is also required in forestry since tree cross-sections are commonly modeled by a circular shape. The precise reconstruction of
+
+∗
+Corresponding author at: Centre d’applications et de recherches en télédétection (CARTEL), Département de géomatique appliquée, Université de Sherbrooke,
+Sherbrooke QC, Canada.
+E-mail address: joris.ravaglia@usherbrooke.ca (J. Ravaglia).
+
+http://dx.doi.org/10.1016/j.cag.2017.05.016
+0097-8493/© 2017 Elsevier Ltd. All rights reserved.
+
+trees and derived measurements have many applications ranging
+from ecology (allometric relationships, growth modelling, carbon
+storage assessment) to forestry (forest monitoring, sustainable development) or industry (harvests planning, sawmill optimisation).
+In this paper, we introduce a novel algorithm designed to
+extract tubular shapes from dense point clouds. The proposed
+methodology is intended to reconstruct each tube present in the
+initial data as a separate item. We tested the tubular shape reconstruction capabilities, including a noise and occlusion sensitivity analysis, on an abstract object and on forest trees, which is our
+main investigation ﬁeld. Besides the algorithm itself, our work incorporates two main innovations. Firstly, it introduces a novel and
+fast cylinder variant of the Hough transform (HT) which uses the
+normal vectors to lower the complexity of the classical HT. Secondly, it includes the curve parametrisation in generalized open
+active contour models.
+Terrestrial laser scanning (TLS) acquisitions in natural forest environments include additional constraints when compared to those
+made in urban, or industrial point clouds. These constraints are
+tied to the remote sensing technique and to the complexity of
+the natural forest environments. TLS point cloud sampling rate
+may vary from one set-up to another, and the spherical geometry of the sensor results in a non-homogeneous sampling density.
+In addition, occlusions are particularly important in forest environ-
+
+24
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+ments. The TLS geometry paired with the presence of vegetation
+(branches and leaves), induce occluded areas expanding both in
+size and number with increasing distance from the sensor. Moreover, noise brings supplementary confusion at surfaces extremities and is severely present in foliages. With these constraints, it
+is frequent that a given stem is probed with different conditions
+from its base up to the location where branching dominates. Forest measurements from TLS data also suffer from objects speciﬁc
+limitations. Even though tree stems can be assumed to have almost circular cross sections, they often deviate from this hypothesis. The non-trivial topology of the woody parts of the trees together with intricate occlusions of numerous branches complicate
+the point clouds processing. Furthermore, stem’s bark can be irregular and rough, and hence produces disturbed surfaces. In addition, TLS point clouds of trees may be affected by wind and multiple scan alignment issues. Therefore, several artefacts induce point
+cloud distortions and generate crooked objects. With these issues
+speciﬁc to the natural environments, forest measurements from
+TLS data have to overcome more constraints than those present in
+urban or industrial settings.
+The remainder of the paper is organized as follows. After presenting previous works in Section 2 and the theoretical background of our work in Section 3, we introduce our approach in
+Section 4: we ﬁrst deﬁne our original cylinder Hough transform in
+Section 4.1, then in Section 4.2 we deﬁne and study generalized
+open growing contours. In Section 5 we present a validation of our
+approach, including a sensitivity study, both for synthetic data and
+terrestrial LiDAR data acquired in forest environment. These results
+are discussed in Section 6 before we conclude in Section 7.
+2. Related works
+Different recent approaches for tubular shapes detection are
+promising for the delineation of tree stems from TLS data. Among
+them, the so-called “arterial snakes”, introduced by Li et al. [1] are
+designed to detect such shapes. After computing a longitudinal
+vector ﬁeld (locally orthogonal to normals), snakelets are initialised
+after clustering nearby points with similar reliable directions. They
+are then competitively grown, eventually merged to handle the object topology, and regularized to provide the ﬁnal results. However, the clustering step for initialising snakelets may face limitations when confronted with a conical shape. In such case the normals to the clustered points cannot provide an orthogonal longitudinal direction, and thus no snakelets can be initialised. Also, the
+“arterial snakes” approach requires heavy computations, implying
+point neighbourhood search for Euclidean clustering and snakes
+skin matching, and solving large linear systems (processing a 100k
+point cloud requires approximately 5 min). Therefore, in spite of
+its similarity with our work, this approach is not applicable in the
+context of tubular shape extraction in forest environments with
+major occlusions and noise, and where a single tree is sampled
+with several hundreds of thousands points.
+Tubular structures have also been studied in [2] from an image
+sequence. Their method ﬁrst detects and ﬁlters the junctions of the
+tubular structures. Then the ﬁnal geometry is reconstructed using a
+sweeping circle along the skeleton together with a rod simulation.
+However, this approach requires a volumetric representation of the
+object, which can not be derived from single-side scanned point
+clouds.
+Other examples of methods detecting tubular shapes were developed in the medical ﬁeld. Particularly, the approach proposed by
+Li and Yuzzi [3], is based on the observation that tubular shapes
+can be modeled by continuous curves in a 4D space. From this
+assumption, they use a minimal path technique to extract vessels
+skeletons and surfaces. However, such minimal path techniques include volumetric integration that apply only to images. As a con-
+
+sequence, this approach, as many works dedicated to medical data,
+is not applicable in the context of unstructured point clouds.
+As yet, another approach integrating the normal vectors information straightforwardly has also been explored [4]. This approach accumulates information along the normals in the original 3D space in which maxima correspond to convergence voxels.
+Hence the result is a pure skeleton curve rather than a tubular surface. The approach only considers ﬁxed-radius objects and is sensitive to noise, occlusions and shape variations, which is prohibitive
+in our context. Another skeletal curve extraction method involving
+normal vectors is proposed in [5]. Similarly to the study discussed
+above, this method does not reconstruct tubular shapes since radii
+are not estimated. Furthermore its complexity has to be evaluated
+since for each point of the input cloud, several potentially costly
+computations are required, including plane cutting and graph creation. Finally, the presented results illustrate that the ﬁnal skeletal
+curve is not necessarily located at the centre of the shape. Thus
+reconstructing an accurate tube would require additional computations.
+The forest point clouds require dedicated approaches to deal
+with speciﬁc constraints. Algorithms adapted to forest environment reconstruction have been proposed. They can be divided
+into two major classes: a “knowledge-driven modelling” class
+and a “geometry-driven modelling” class. Algorithms from the
+“knowledge-driven modelling” class circumvent the issue of geometric complexity by producing visually appealing and realistic
+“synthetic” trees. The tree reconstruction in these algorithms is initiated with data points and reﬁned with botanical or forest knowledge (e.g. allometry1 , vegetation self-similarity, pipe model, etc)
+but with no shape approximation guarantee (see [6] or [7] for instance). The “geometry-driven modelling” class includes algorithms
+whose objective is to produce an accurate description of the trees
+based solely on data points and thus provide accurate forest information. These algorithms build models approximating the data
+with few assumptions on the shape of the objects to reconstruct.
+“Knowledge-driven modelling” algorithms usually rely on a reconstruction of the tree skeleton and topology followed by a simulation entailing allometric relationships and/or L-systems2 . First,
+a weighted adjacency graph is created from the data points and
+a deﬁned neighbourhood. Then the tree skeleton is estimated using either shortest path computations with Dijkstra’s algorithm, or
+minimum spanning tree extractions from a priori estimated root
+points for each tree. Finally, the geometry of the stems is predicted
+starting from its skeleton paired with allometric relationships to
+estimate stem and branches radii. Missing parts or foliage may be
+added based on self-similarity or L-Systems. Therefore, resulting
+reconstructions are designed to be visually pleasing and close to
+the data points, but neither approximation properties nor precise
+measurements are actually guaranteed. Hence, such approaches are
+generally dedicated to rendering applications more than to forest
+monitoring.
+“Geometry-driven modelling” algorithms aim at reconstructing
+trees by simultaneously approximating closely the data points and
+segmenting the woody parts of trees. Estimation of the diameter
+at breast height (DBH, 1.30m above the ground surface) is essential for allometric relationships (see [8–10]). However, reconstruction of tree taper is more complex. Several algorithms have been
+designed to process TLS point clouds to estimate DBH and stem
+taper under the assumption that tree stem cross-sections can be
+
+1
+Allometry consists of a set of general relations derived from a large compilation
+of forest measurements. It provides an estimate of the tree structure according to
+few given parameters such as the diameter at breast height (DBH, diameter of the
+stem 1.30m above ground) and the tree height.
+2
+L-systems are grammars that can be adapted to generate models of plant structures according to a set of generative rules.
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+approximated by a circle. This assumption leads to methods using shape ﬁtting and pattern recognition algorithms. Shape ﬁtting
+requires a segmentation of the point cloud into clusters to identify the points that must be ﬁtted. For example, clusters can be
+produced by considering the distance from a point to its neighbour or to the cluster [11,12], by employing a variant of k-means
+clustering [13], by using a structural element [14], by dividing the
+point cloud into patches that can then be further merged [15], or
+within 2D rasters [16]. Even approaches based on iterative cylinder ﬁtting perform such clustering since points that are close to a
+shifted cylinder are used as a cluster for the next shape ﬁtting step
+[17]. Otherwise, density-based spatial clustering may be adopted.
+Identiﬁed clusters are then used to ﬁt one of the following shapes
+for tree stem reconstruction:
+Circles can be ﬁtted into horizontal layers [12,18]. However,
+inclined stems or branches can no longer be estimated accurately since their horizontal cross-sections
+cannot be approximated by a circle. Ellipse ﬁtting
+was also tested, but this approach faces some limitations [19,20].
+Cylinders takes into account the local orientation of tree
+branches. Iterative methods are capable of reconstructing entire trees from an appropriate starting
+point. RANSAC algorithm or principal component
+analysis (PCA) have been used to support cylinder ﬁtting [16].
+Cones can be used to consider stem tapering. However they
+are not widely used for entire stem reconstruction
+and produce results that are similar to cylinder ﬁtting [21,22].
+Other shapes have also been used to achieve more precise results. For instance, B-spline ﬁtting on horizontal layers tends to precisely match the stem shape, but
+its use is limited when having to describe a singlescanned tree stem [23]. Cross-sectional polygons can
+also be used [24].
+Shape ﬁtting approaches encounter limitations. For example, a
+decision is required to accept or reject the ﬁtted shape. It is usually based on a threshold that is set on the RMSE of the shape ﬁtting. This threshold has to be set carefully and may vary from one
+data set to another. Moreover, least-squares ﬁtting is inﬂuenced by
+noise, and its robustness to occlusion depends upon the quality of
+prior clustering operations. Shape ﬁtting has been successfully applied to data sets that have been acquired under favourable conditions, but their performances may decline when the technique is
+applied to complex forest scenes.
+Aside from shape ﬁtting, the HT has been adapted to identify
+circles in order to estimate DBH or pre-locate trees [16,25,26]. The
+classical HT is not a predominant approach, mainly because of its
+algorithmic complexity and its high requirements for computer resources. In addition, the analysis of the HT result can be a complex task which involves several empirical criteria and thresholds.
+Therefore, the HT is generally reduced to a pre-localisation step.
+Nevertheless, the HT is attractive despite these drawbacks since it
+has the potential to deal eﬃciently with current constraints on TLS
+point clouds acquired in complex forest scenes.
+The main objective of our study is to propose an automatic algorithm for tubular shapes reconstruction that handles the main
+constraints of TLS data in forest environments. Confronted to an
+object containing a unique connected tubular part, our method is
+intended to produce a single tube, whereas a shape combining
+several intersecting tubular parts will result in the reconstruction
+of an equal number of disconnected tuboids. Two methodological
+choices precluded the selection of solutions to deal with TLS constraints. First, we took advantage of the beneﬁts of the HT and re-
+
+25
+
+duced the complexity of its computation. Thus, one of the main
+drawbacks of the classical HT was minimised. Second, we reconstructed each tree stem as a single entity by developing generalized open growing contours for the 4D Hough space. By doing so,
+we expected greater control on the smoothness and coherence of
+stem reconstructions.
+3. Theoretical background
+Our approach is based on an original HT combined with generalized open active contours. Therefore, in order to deﬁne them
+properly in Sections 4.1 and 4.2, respectively, we brieﬂy review
+both the classical HT and the active contours algorithms.
+3.1. Hough transform
+The HT is a powerful pattern recognition tool that was ﬁrst presented by Hough [27]. It uses an accumulator to extract a set of
+occurrences of a shape within a data set. It was initially devised to
+recognise straight lines in a picture. Since then, it has been used to
+detect a wide range of shape models within different types of data
+[28,29,30]. We will now give a general and formal presentation of
+the HT. However, with the multiple applications and descriptions
+of the HT, more complete presentations can be found in several
+references such as [31,32].
+Roughly speaking, the HT of the shape model is the function
+which associates the number of data points matching the shape to
+each potential occurrence of the model. In other words, each data
+point votes for the set of occurrences that it matches. Let us consider a set of n data points D = {di , i ∈ 1, . . . , n} and a mathematical
+shape model M with m parameters. Let P = P1 × · · · × Pm be the parameter space with Pj the domain of the jth parameter. Any set of
+parameters p ∈ P gives rise to an occurrence M(p) of the model.
+Let us denote by fp (d) the binary function testing if a data point
+d belongs to M(p). Given k ≤ m, the k-Hough transform is deﬁned
+as:
+
+HTk :
+
+M −→ N+
+
+p −→
+1 p (d )
+
+(1)
+
+d∈Pk (D )
+
+where Pk (D) ∈ Dk is the set of combinations of k elements among
+D, and 1 p (d ) determines if the tuple d = (d1 , . . . , dk ) matches the
+model M(p):
+
+1 p ( d1 , . . . , dk ) :
+
+D k −→ {0, 1}
+
+(d1 , . . . , dk ) −→
+
+k
+
+
+f ( di )
+
+(2)
+
+i=0
+
+In practice, the parameter space is discrete, and is referred to as
+Hough space (HS). Each element of the HS represents an occurrence of the model and is associated with a score corresponding
+to the number of votes. Hence the score describes the level of
+matching between an occurrence of the shape model and the data
+points. Shape reconstruction is then computed by extracting elements of high score in the HS. However, HS analysis is dependent
+upon the speciﬁc shape model and algorithm settings. Therefore,
+ﬁltering, thresholding and detecting maxima in the HS are key issues and must be adapted to optimise the algorithm for a speciﬁc
+application.
+The HT is a powerful approach which reduces a general pattern
+recognition problem to a simpler discrete space analysis. It does
+not require an initial guess of the results (e.g. location or number
+of occurrences) and extracts an exhaustive set of shapes in a single
+step. Score accumulation tends to be robust to irregular sampling,
+noise and occlusions, as it is able to identify the most probable occurrence (hence a “full” shape) from partial data. However, it may
+
+26
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+require a lot of computation time and memory. Therefore the main
+feature of the HT described in Section 4.1 is to lessen the complexity while setting an appropriate HS analysis.
+3.2. Open active contours
+An open active contour, also called snake, is an open parametric
+curve c(u) embedded in a discrete space (traditionally called image) and minimising an associated global energy Eg [33]. The energy is deﬁned such that it reaches its minimum when the curve
+fulﬁls desired properties. Minimising this energy results in a compromise between different constraints that are expressed through
+its deﬁnition. Active contours were initially introduced by Kass
+et al. in [33] and further developed [34–36]. It classically uses the
+following energy:
+
+
+
+Eg =
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+Ei c ( u ) + Ed c ( u ) + Ee c ( u ) du
+
+(3)
+
+where Ei (c (u ) ) = α|c (u )|2 + β|c (u )|2 is related to the internal
+geometry of the curve, Ed (c(u)) is a data-related term that depends upon the value of the image, and Ee (c(t)) is a more general
+term that includes external (i.e. user deﬁned) additional constraints, such as local repulsive forces. Speciﬁcally Ei aims at controlling the elasticity and curvature by applying a constraint upon
+the ﬁrst and second derivatives of the curve, and Ed constraints the
+curve to evolve toward elements of interest in the data image.
+The computation of active contours relies on the minimisation of Eg , and thus, on a multi-variable optimisation scheme. This
+optimisation requires, in turn, an initial guess of the location of
+the curve in the neighbourhood of its optimal state. Using EulerLagrange equations, the minimisation is ﬁrst transformed into a
+partial differential equation, and then solved iteratively using Euler
+schemes through time t:
+
+c (t ) = (A + γ I )−1 (γ c (t − 1 ) − ∇ Ed (t − 1 ) )
+
+(4)
+
+where A is a pentadiagonal banded matrix used to approximate
+the derivatives of the curve and γ a time step. The resulting curve
+is a compromise between different constraints: mainly, the curve
+geometry and its position in the image. Thus, it represents a powerful and attractive tool for extracting a desired smooth curve in
+possibly noisy data.
+
+Fig. 1. Overview of the STEP methodology.
+
+4.1. Point-normal circles Hough transform
+4. Methodology
+Let us deﬁne a tuboid as an ordinated series of 3D circles with
+continuous locations, orientations and radii. It is equivalent to the
+envelope of a continuous series of spheres. Our algorithm extracts
+such tuboids from dense point clouds. Actually, in addition to the
+point cloud, our approach requires a normal vector ﬁeld which can
+be either provided with the point cloud (according to the scanning technology used) or computed. Such normals computation
+has been widely studied and we refer the reader to [37] for a survey. Our method involves two main components (Fig. 1): (1) deﬁning an original HT to identify eﬃciently 3D circles (or equivalently
+spheres) in raw point clouds. A previous work by Kimme et al.
+[38] bears some similarities but identiﬁes 2D circles in 2D images.
+And (2) deﬁning generalized growing open active contours within
+HS to identify and link the most representative 3D circles, thereby
+forming a fully coherent tuboid via energy minimisation. Finally,
+we transform each active contour back into tuboids in the original
+Cartesian space. This procedure identiﬁes a set of tuboids within a
+global scene. In the context of point clouds from TLS acquisitions
+in forest area, each tuboid represents a tree stem with direct access to DBH and taper. In the sequel, we will refer to our approach
+as Snakes for Tuboid Extraction from Point clouds (STEP).
+
+The ﬁrst part of the STEP method is to deﬁne and design a computationally eﬃcient HT to identify potential 3D circles (or equivalently spheres). The resulting HS will then provide a reliable space
+for initialising growing open active contours from local maxima.
+Our HT relies on three main elements. First, normal directions of
+the points are used as additional information to reduce the complexity of the HT calculation. Second, a ﬁlter is applied in the HS
+to discard elements of low interest, thereby reducing the complexity of the subsequent space analysis. Third, maximal HS elements
+are selected as the best candidates for extracting circular crosssections, and further used as seeds for active contour growing.
+
+4.1.1. Hough space computation
+We intend to tailor the classical HT to detect 3D circles. In a
+straightforward approach, a circle is represented by 7 parameters:
+ , r ) where c ∈ R3 is the location of the centre of the circle,
+C = (c, n
+ ∈ R3 its normal direction and r its radius. Such settings would
+n
+therefore classically lead to the computation of a 7D discrete HS,
+which is both time consuming and memory costly. However, in a
+tuboid, orientations of circles can be retrieved later from the skeleton. Therefore, we reduce the number of dimensions of the HS to
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+27
+
+extract smooth curves that pass through the local highest scores of
+the HS. Therefore, growing open active contours emerge as a well
+suited extraction approach. However, we noticed unwanted interaction between the classical snake energy and the growth process:
+energy minimisation actually hinders the growth. We deﬁne a new
+energy for active contours which prevents such interactions by taking parametrisation into account.
+
+Fig. 2. Normal convergence properties: (a) Opposite normal directions converge to votes for a set of circles
+wards the centre of a circle. (b) A point p with normal n
+(blue). Considering −
+n involves a second set of circles (red). (For interpretation of
+the references to color in this ﬁgure legend, the reader is referred to the web version of this article.)
+
+4, namely (c, r ). Doing so, we take advantage of the HT while reducing the space complexity of the HS.
+Our HT also reduces the algorithmic complexity of the voting
+phase by considering the information provided by normal directions, in addition to points location. We start from the following
+property of circles: given a point p on a circle C and its normal
+ p (oriented outward), the half-line deﬁned by p and −
+n
+n p passes
+through the centre of C. That is, the opposite normal vectors of the
+points on a circle converge towards its centre (Fig. 2b). Therefore,
+ p ) is the set of circles C = (c, r ) of
+the set of circles containing ( p, n
+centre c and radius r satisfying the following system of equations,
+which is the parametric equation of a half line:
+
+
+c = p − λn
+r=λ
+
+, ∀λ ∈ R+
+
+(5)
+
+However, estimating a coherent vector ﬁeld of outwardoriented normal vectors on a point cloud is a challenging issue.
+When there is no possibility of choosing a consistent orientation,
+both directions have to be considered and points then vote for two
+half lines in the 4D HS (Fig. 2a):
+
+
+c = p ± λn
+r=λ
+
+, ∀λ ∈ R+
+
+(6)
+
+Hence, depending on whether the normals are oriented or not,
+Eqs. (5) or (6) are used to accumulate the votes of the data points.
+These votes can be computed eﬃciently in linear time (with respect to the HS resolution) using fast-ray tracing algorithms (such
+as [39]) adapted to 4D spaces.
+4.1.2. Maxima detection
+The resulting HS is a discrete 4D image in which each element
+represents an occurrence of a 3D circle. The value of each element
+within this space is the voting score of the corresponding circle.
+The HS must be analysed to extract circles of interest: elements
+with the highest score are most representative of the data. Yet,
+the score itself cannot be considered as the only reliable criterion
+for circle extraction: two effects alter the number of points that
+are sampled on each circle. First, point sampling rate varies with
+the distance to the sensor. Stem cross-sections with similar radii
+can then be described by different number of points. Second, even
+if constant sampling is assumed, circles of smaller radius will be
+sampled by a fewer points. Under such conditions, circles of interest cannot be extracted with a given threshold or solely with a
+local maxima detection over the HS, as can be done in other applications. Rather, in a ﬁrst step we extract local maxima (considering a direct 4D neighbourhood), regardless of their scores, and use
+them as seeds for growing active contours.
+4.2. Growing open active contours
+Our second step is to analyse the HS to identify sets of tuboids.
+Tuboids are open curves in the Hough space, hence we need to
+
+4.2.1. Energy deﬁnition and minimisation
+In the context of our study, we intend to extract (1) smooth
+curves (i.e. smooth tuboids in terms of location, orientation and
+radius), and (2) curves passing through elements with high score
+in the HS. We deﬁne a new global energy Eg (c(u)) expressing both
+of these constraints for the open active contour:
+
+
+
+
+
+Eg c ( u ) =
+
+
+
+ 
+
+
+
+
+
+Ei c ( u ) + Ed c ( u )
+
+
+
+c (u )
+
+
+
+du
+
+(7)
+
+Actually, most active contour approaches are used in the context of
+images or binary volumes. Hence classical snakes are based on pixels and implicitly assume curvilinear parametrisation of the curve.
+However, we model snakes as continuous, piecewise linear curves
+deforming over time. Therefore, unlike classical energy (Eq. (3)),
+the term Ed (c(u)) c (u) computes the integral of the data energy
+along the curve (given in general parametrisation). We thus obtain a parametrisation-independent formulation of the data energy.
+This consideration entails important changes in the minimisation
+scheme and provides a stable growth of the curves.
+ 
+Let us now more precisely deﬁne Ed (c(u)). We denote H u =
+
+
+
+
+
+
+
+
+
+HS c (u ) as the value of the HS at c(u), Hm and HM the respective
+minimum and maximum values of the HS, and hm (u) and hM (u)
+the respective minimum and maximum values of HS in the neighbourhood of c(u). We deﬁne data energy as follows:
+
+ 
+
+Ed c ( u ) = a
+
+Hm − H u
+HM − Hm
+
++ (1 − a )
+
+ 
+ 
+
+ 
+ 
+
+hm u − H u
+
+hM u − hm u
+
+(8)
+
+It is the weighted sum of a global and a local term with
+a ∈ [0, 1] a balancing variable. The global term normalises HS
+scores over the entire space. However, such normalisation does
+not take into account local score variations. The local term does
+account for local variations, but induces high energy variation in
+small areas. The proposed data energy combines both expressions
+above to obtain a regular energy value over the HS, while preserving the importance of the local score.
+Our global energy is the integral of a functional F:
+
+
+
+Eg =
+
+
+
+
+
+F u, c (u ), c (u ), c (u ) du
+
+(9)
+
+From Euler-Lagrange equations, Eq. (9) reaches its minimum when:
+
+d
+∂F
+d
+∂F
+∂F
+−
++
+∂ c ( u ) du ∂ c  ( u )
+du2 ∂ c (u )
+
+=0
+
+(10)
+
+Developing Eq. (10) for the energy given in Eq. (7) leads to:
+
+−2α c (u ) + 2β c (u ) + v1 − wv2 = 0
+
+(11)
+
+Ed (c (u ))
+, and where v1 and v2 are matrices which lines
+c (t ) 2
+are given by v1 (u ) and v2 (u ) deﬁned as follows:
+with w =
+
+v1 (u ) = c (u ) ∇ Ed (c(u )) −
+v2 (u ) = c (u ) c (u ) −
+
+∇ Ed (c(u ) ), c (u ) 
+c (u )
+c (u )
+
+c (u ), c (u ) 
+c (u )
+c (u )
+
+(12)
+(13)
+
+Interestingly enough, v1 (u ) is the component of the data energy
+gradient orthogonal to the curve tangent, and v2 (u ) is the component of the second derivative orthogonal to the curve tangent.
+
+28
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+Fig. 3. HS represented as a 2D image with intensity related to the HS score. Left:
+potential growing directions within a neighbourhood (light red) cone overlaid with
+an active contour (red). Centre: directions are normalised (top) and scaled according
+to their score (bottom), while the ﬁnal growing direction (light red) is found by
+UPCA. Right: a point is added in this direction from the contour’s extremity. (For
+interpretation of the references to color in this ﬁgure legend, the reader is referred
+to the web version of this article.)
+
+the ratio σ =
+
+Discretising the ﬁrst and second derivatives, Eq. (11) becomes:
+
+Ac + v1 − wv2 = 0
+
+(14)
+
+Following the approach introduced by Kass et al. [33], we then
+consider the active contours as dynamic systems through time t,
+the steady state of which is given by Eq. (14). We solve the resulting partial differential equation using a combination of implicit
+and explicit Euler schemes. Thus a solution is found using the following iterative scheme:
+
+c (t ) = (A + γ I )−1 (γ c (t − 1 ) − v1 (t − 1 ) + wv2 (t − 1 ) )
+
+direction is computed. We avoided the growth of the curve towards the closest local maxima since noise would impact this local
+choice. Moreover, this might induce a rigid growth of the curve
+when a smooth one is preferred. Instead the computation takes
+into account a ﬁxed number of the HS elements of highest score
+inside a cone that is centred at each ending point of the active
+contour. Each selected element within this cone is considered as an
+attractor for the curve. The potential growing directions are computed in a manner similar to that of the orientation of the initial
+segment, except that only neighbours inside the cone are consid is considered
+ered for UPCA. As previously, the growing direction G
+to be the eigenvector associated with the highest eigenvalue of the
+UPCA.
+Growth stops when the curve reaches the boundaries of the HS
+or when a stopping criterion is met. In our study, the lack of preferential growth direction is used as a stopping criterion. Let us denote the eigenvalues of the UPCA by λ1 ≤ λ2 ≤ λ3 ≤ λ4 . When
+
+(15)
+
+where γ is a time step. Integrating the data energy along the curve
+without assuming curvilinear parametrisation induces a major difference with the appearance of −v1 (t − 1 ) + wv2 (t − 1 ) replacing
+the gradient of the data energy term present in the original optimisation scheme (Eq. (4)). In particular, it follows that the minimisation of the data energy only deforms the contour in directions
+orthogonal to the curve. This point is fundamental for growing
+open active contours. Indeed, snakes grow along lines of high
+scores; such lines themselves contain local maxima and gradient
+along them can either shrink or stretch the curve with the classical snake energy formulation.
+With our generalized active contours, data energy constraint
+does not conﬂict any more with the curve growth at its extremities. Therefore, our optimisation scheme has a major effect on
+curve evolution towards its optimal position, which is an important
+consideration when dealing with growing open active contours.
+4.2.2. Initialisation
+In point clouds, no a priori information is available regarding
+the location or the length of the tuboid that is to be reconstructed.
+To address the initial location issue, we take advantage of the previously extracted HS local maxima. For each local maximum e of
+the HS, a segment is initialised as a growing open active contour
+seed. Let n1 nk be the set of neighbours of e with a respective
+score si . For any i = 1, . . . , k, we consider the weighted direction
+−−−→
+ni − e
+di = si −−
+−→ (Fig. 3). We then run an uncentred principal comni − e
+ponent analysis (UPCA) on the set of directions di . The orientation
+of the initial segment is set to the eigenvector that is associated
+with the highest eigenvalue of the UPCA.
+4.2.3. Curve growth and stopping criterion
+Initial segments iteratively grow towards high scores in the
+neighbouring HS outside the minimisation scheme. The energy
+minimisation procedure is instead regularly interleaved between
+curve growth operations and performed again as a ﬁnal step. At
+each iteration, and for both extremities of the curve, a growing
+
+λ1
+is lower than a threshold, the ﬁrst
+λ1 + λ2 + λ3 + λ4
+
+component of the UPCA is no longer considered suﬃciently important to describe a growing direction and the growth of the curve
+is stopped.
+Combining (1) the initial location of small curves at the local
+maxima of the HS, (2) curve growth along HS elements with high
+scores, and (3) energy minimisation solves the lack of a priori information on the ﬁnal tuboids that are to be detected.
+4.3. Elements of complexity
+In order to better appreciate the advantages of our HT with respect to the classical HT, let us provide some elements on the complexity of both approaches. The classical HT can actually be either
+many-to-one (a set of points votes for a single model) or one-tomany (a point votes for the set of models it belongs to. The complexity of the many-to-one approach for circles or spheres is O (n3p ),
+with np the number of data points. This is thus impracticable on
+point clouds containing several millions of points. The one-to-many
+approach would be more suitable. However, even in this case, for
+any radius r in the range of [rmin , rmax ] discretised into nr bins, a
+point votes for a full sphere of radius r in the 3-dimensional space
+3 ) ,
+of centre locations. This voting procedure is thus O (n p nr rmax
+which is still computationally expensive. In contrast, the normal
+information integrated to our method reduces this complexity.
+According to Eq. (6), each point votes for a discrete line in the
+HS. With a fast raytracing algorithm, the vote is thus linear with
+respect to the number of bins. In turn, the global complexity of
+our variant of the HT is only O (n p nr ). Once the HT has been computed, the active contours complexity is dominated by the energy
+minimisation since the growth is computed in constant time. The
+complexity of the energy minimisation scheme depends on the
+number k of samples in the active contour. The most costly operation during this procedure is the inversion of the k × k matrix A.
+This matrix being pentadiagonal, the complexity of this inversion
+is O (k2 ).
+The memory footprint of the proposed methodology depends
+on the implementation: whether the HS is represented as a dense
+or as a sparse 4D matrix. In the case of a dense matrix, assuming that an integer is coded on 4 bytes, the creation a HS of dimension dx , dy , dz , dr requires 4 × dx × dy × dz × dr bytes. Let us
+consider, for example, a (10m )3 point cloud where the radius of
+the reconstructed tubes vary from 5 cm to 20 cm. The creation
+of a HS with a resolution of 2 cm for the x, y, and z dimension
+and 1 cm for the radius results in a 1.88 × 109 elements array,
+which is close to the maximum integer 2.15 × 109 and would require approximately 7.5Go of main memory. In contrast, it is hard
+to precisely estimate the memory footprint of sparse implemen-
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+29
+
+Fig. 4. Sensibility analysis of the STEP method on simulated cylinders.
+
+Fig. 5. Second data set.Left: 3D model used to simulate the point clouds, the diameter of different areas of interest are indicated. Right: simulated single-sided point
+cloud.
+
+tations as it depends on the distribution of points. The HS footprint for reconstructing the trees presented in the results section
+is in the approximative range of 400Mo to 900Mo. As an additional indicator, a 15m radius circular forest plots with trees up to
+20m height with the same resolutions as above required approximately 5.5Go in memory. Even though our method is demanding,
+such requirements are in the range of current hardware capacities.
+5. Results and interpretation
+The STEP method was tested on four different data sets. For
+all of them, we used the plugin available in Meshlab to estimate
+a coherent normal vector ﬁeld for the point cloud. The ﬁrst one
+was composed of simulated point clouds sampled over cylinders.
+They were used to evaluate the sensitivity of the STEP method
+to speciﬁc constraints of TLS data. The second data set involved
+simulated acquisitions of a complex tubular object (Fig. 5). It was
+exploited to show the capacity of the STEP algorithm to reconstruct objects with varying geometry under different sampling conditions. The third data set was composed of in situ TLS acquisitions
+of a tree in a natural forest plot. The comparison of our stem reconstruction with high precision measurements allowed quantifying the pertinence of the STEP method in a real forest environment. The last data set was included to show the ability of our
+algorithm to extract the main branching structures of a natural
+stand using a TLS point cloud.
+First data set. The ﬁrst data set was composed of a cylinder with
+a ﬁxed radius of 50 cm and a ﬁxed length of 2 m, scanned under
+different conditions to exhibit the behaviour of our approach with
+respect to several issues: undersampling, occlusion and noise. The
+resolution of the corresponding HS was of 2 cm for the x, y, and z
+dimensions and 1 cm for the radius.
+It was ﬁrst scanned with ten decreasing point densities, ranging
+from 14 pts/cm2 to almost 1,40 0 0 pts/cm2 . Each simulated cylinder was reconstructed with a radius estimation error ranging from
+
+0 to 0.75 cm, with an average error, for each cylinder, ranging
+from 0.026 cm to 0.54 cm and a standard deviation of 0.17 cm
+(Fig. 4a). These results thus demonstrated the robustness of the
+STEP method to changes in point density, keeping the error on the
+estimates of cylinder radii generally less than 0.5 cm.
+In the second test, the same cylinder was used to produce occluded point clouds. To simulate occlusion, the cylinder was sampled as if only a small portion of its surface was visible. This sampled portion of the cylinder varied from 10° (only a small part of
+the cylinder is sampled) to 360° (the whole cylinder is sampled)
+by increasing steps of 10°. The cylinders were reconstructed using
+the STEP algorithm, with recorded errors on the radii in the range
+of 0.004 cm to 1.37 cm (Fig. 4b). Average error on the radius was
+0.27 cm with a standard deviation of 0.38 cm.
+The third test evaluated the effect of surface noise on our algorithm. It was evaluated by simulating acquisitions with different
+amounts of random noise in the points coordinates. The amount of
+noise varied from 0 cm to 5 cm (corresponding to 0% to 10% of the
+cylinder radius). The overall average error on stem diameter using
+the STEP method was 0.32 cm with a standard deviation of 0.22
+cm (Fig. 4c). Considering the amount of noise in the data set and
+the maximum average error of 0.82 cm, the error is well within
+the expected accuracy range of 1 cm.
+The results obtained from these three tests set illustrate the stability of our algorithm despite the limitations of TLS data. Whatever the sampling rate, the error is within the range of the HS radius resolution used. Indeed, the property of normal convergence
+does not depend on sampling issues. The second tests demonstrate
+the resilience of the STEP method to occlusion. From (Fig. 4b), it
+appears that with a sampled portion of more than 40°, the errors are below 1 cm and lessen as visibility increases. The simulations also illustrate the rise of the reconstruction error with respect to additional surface noise. With errors less than 1 cm for
+each level of noise, the response of the STEP algorithm is coherent
+with the chosen resolution. Actually, surface noise lowers the quality of normals vector computation and decreases the uniformity of
+the normal vector ﬁeld. However, since the HT is an accumulation
+approach, the score convergence is still observable and the noise
+may compensate itself. This effect is visible on Fig. 4c where the
+error lessen for a higher level of surface noise while we expected
+the error to increase the reconstruction error.
+Second data set. The second data set contains simulations of timeof-ﬂight camera acquisitions of the geometrical model depicted in
+Fig. 5. With this object, we intended to analyse the behaviour of
+our approach on challenging features that may appear in real data
+such as tapering, windings, and strong radii variations.
+We simulated two acquisitions approximating a common TLS
+resolution of 3pts/cm2 10 m away from the sensor: one from the
+front of the object, and the other from the back. Since the model
+
+30
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+Fig. 6. Evaluation of the robustness of the STEP method when confronted to various amounts of points.While the top and bottom rows illustrate, respectively, the reconstruction of the single-sided model and two-sided model, the amount of missing points is speciﬁed for each corresponding column.
+
+Fig. 7. Reconstruction of a tubular object scanned with increasing noise. The top row illustrates the results for a single scan while the bottom row shows the reconstruction
+from two point clouds acquired from different points of view.
+
+is larger than the previous cylinder, the HS resolutions were set to
+3 cm for the x, y, and z dimensions and 1 cm for the radius. These
+two conﬁgurations allowed looking at the accuracy of the shape
+reconstruction for a single-sided and a two-sided point cloud of a
+complex object. In order to evaluate the robustness of our method
+with respect noise and undersampling, we generated several data
+sets: ﬁrst we decimated the point clouds, generating new data containing only 75%, 50%, 25% and 10% of the initial clouds (Fig. 6),
+and second, we added an amount of surface noise varying from 1
+cm to 4 cm (i.e. ranging from 1% to 5% in thick parts of the model,
+and from 3% to 40% in thin parts) (Fig. 7).
+The tuboid reconstruction procedure took in average 110 s, including 1 s for computing the HT (0.5 s in the case of single-sided
+acquisition). Actually, many HS local maxima of low score used
+as seeds for tuboid growth are further discarded (the generated
+snake are non signiﬁcant, correspond to noise or conﬂict an existing tuboid). Therefore, ﬁxing a maximum number of tuboids to
+be extracted avoids the analysis of such maxima and reduces the
+computing time to 50 s. With these results, the STEP algorithm
+proves its robustness for both scanning conﬁguration (single-sided
+or full shape) even in the presence of noise or undersampling.
+The results obtained from this data set provide material to analyse the ability of our algorithm to face complex models. They also
+illustrate the effects of the acquisition protocol (number of points
+of view), as well as those of the sampling resolution and homogeneity. Fig. 7 conﬁrms, that the surface noise impacts the reconstructions quality. Due to perturbations, the lack of local consistency in the computed normal vector ﬁeld disturbs normals
+convergence. This either creates cuts in the reconstructed shapes
+(Fig. 7d, top and 7 e, top and bottom) or perturbs the stopping criterion, leading to a single snake covering multiple parts of the object (Fig. 7b, top, and 7 e, top). However, these results also under-
+
+Fig. 8. Reconstruction of a noisy and occluded coniferous tree scanned with TLS.
+Left: The resulting tuboid overcome these limitations to reconstruct the upper part
+of the stem. Right: tapering error of the scanned tree.
+
+line the resilience of our approach; even with the highest level of
+noise, the shape is globally properly reconstructed. The amount of
+missing points in the data also deteriorates the extracted tuboids.
+However, our tests present a signiﬁcant quality of reconstruction
+up to 75% of missing points with respect to a common TLS acquisition sampling resolution. Multiple points of view enhance the reconstructions and its resilience compared to a single scan acquisition: reconstruction is stable in registered clouds up to 4 cm noise.
+Third data set. The third data set was selected to apply the STEP
+algorithm to a natural forest point cloud. A tree was isolated by an
+operator from the original TLS point cloud by keeping the points
+of the stem along with 15 cm of the surrounding branches (Fig. 8).
+Similar to the ﬁrst test, the resolution of the corresponding HS
+was of 2 cm for the x, y, and z dimensions and 1 cm for the ra-
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+31
+
+Fig. 9. Reconstruction of the main branching structure of 12 Erytrophelum fordii trees with increasing decimation of points. The wind combined to the point clouds registration produced misalignments.
+
+Fig. 10. Reconstruction of the main branching structure of 12 Quercus petraea trees with increasing decimation of points. The wind combined to the point clouds registration
+produced artefacts.
+
+dius. After the in situ acquisition, the target tree was cut down,
+the branches were pruned, and the remaining log was scanned
+by a very high precision scanner. This procedure gave access to
+a reliable reference measurement of the stem taper. Comparison
+between the STEP reconstruction and reference values provided
+a quantitative analysis on the error of the estimated stem taper
+(Fig. 8). It is important to note that the reference diameter measurement did not include the tree bark. Hence the presented taper
+error incorporates a 0.4 cm bias.
+This test showed how the STEP algorithm is adapted to TLS
+scans in natural forest. The measured error in the stem taper was
+mainly under 1 cm up to 6 m from the ground. Beyond that point,
+the branches generated large occlusions and noise points (points
+located between two surfaces hit by a TLS laser beam). However,
+even above 6m, the attractors inside the growing search cone were
+still suﬃcient to capture a general but less accurate description of
+the tree (Fig. 8). The obtained results are in the range of acceptable
+forest measurements, which demonstrates the relevance of the algorithm on forestry data.
+Fourth data set. Some TLS acquisitions of trees in a forest plot
+were taken from the SimpleTree© open data page [40] to demonstrate the capacity of the STEP algorithm to extract the main
+branching structure of the trees (Figs. 9 and 10). Even though each
+tree was isolated in a single point cloud and automatically denoised, the registration of several acquisitions generated defects in
+the point clouds. The radius resolution of the HS was set to 1 cm
+and the x, y, and z resolution of the HS were set to 4 cm to decrease the running time compared to 2cm. The main structures of
+12 Erythrophleum fordii and 12 Quercus petraea trees were reconstructed. The STEP method extracted the tree’s structure within the
+range of 1min20s to 2min, including 2 to 5 s for the HS computation. Limiting the number of tuboids to be extracted to 10 reduced
+the running time between 30 and 50 s. As an additional robustness
+test, we ran the STEP method on the same data sets after randomly
+selecting only 50, 25 and 10% of the point clouds (Figs. 9 and 10).
+The standard parametrisation of the method was not appropriate
+for only 10% of the points. We then modiﬁed the x, y, z resolutions of the HS to 5 cm in order to better observe the normals
+
+convergence. Finally, these last tests established the ability of the
+STEP algorithm to retrieve the main structure of woody parts of
+tree in spite of TLS artefacts and subsampling. This way we indicate the potential of the STEP algorithm to measure stem taper,
+but also to furnish higher level information of interest in forest
+monitoring.
+6. Discussion
+We propose an novel algorithm using pattern recognition tools
+which reconstructs tuboids as single entities in order to obtain
+greater control on the output shape. We extended and combined
+two well-known mathematical tools that had not been exploited
+to their full potential to treat the tubular shape extraction issue.
+We ﬁrst deﬁned an original cylinder Hough transform to eﬃciently
+extract tuboids from a point cloud with normals. This innovation
+was accomplished by reducing the HS dimensions to 4 and developing a speciﬁc HS analysis, since the usual HS analyses do
+not match our objectives. We also generalized the active contours
+energy by taking into account curve parametrisation in the data
+energy term, and thus obtain an adapted open growing contour
+algorithm. This novelty has a large effect on the energy minimisation procedure. Results have illustrated the resilience of the STEP
+algorithm to limitations that are inherent to unstructured point
+clouds, and especially to TLS data, viz. different sampling densities within the point cloud, signal occlusion and presence of noise.
+Overall, average reconstruction errors were in the range of the
+used HS resolution. Our algorithm proves to be stable, to reconstruct complex shapes, and to be resilient to noise and shifts in
+sampling resolution with acceptable reconstruction until 75% subsampling. Moreover, the STEP algorithm is able to reconstruct cone
+shapes. In the context of tree reconstruction, the methodology is
+entirely different from what is currently used for stem taper estimation [26,41,42]. However, it shows robust competences to overcome the TLS limitations and presents an accuracy acceptable in
+operational forest inventories. Not only the main stem, but also
+the major structure can be reconstructed. Thus, we believe that
+with improvements, our algorithm has the potential to provide a
+complete QSM model of trees. Compared to other tubular recon-
+
+32
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+
+struction methods, the STEP algorithm offers additional advantages
+for dealing with noisy and occluded point clouds that are typical
+of data acquisition in natural forest environments (Fig. 8).
+For a better understanding of the STEP method, we provide
+more insights on its application. First, the STEP method aims at
+extracting tuboids from point clouds by observing normal convergence towards the centres of circles. However, even though normal
+computation on point clouds has been previously studied, is still
+a challenging task. Especially with the geometry of forest structures which makes it diﬃcult to estimate an accurate normal vector for each point. The quality of STEP method results suffers from
+inaccurate estimates of normals, since convergence of normals is
+not assured in such cases. Fig. 8 actually shows that the STEP
+method’s accuracy decreases when confronted to higher occlusions
+and noise in the upper part of the tree. This can be explained by
+the diﬃculty to obtain accurate normals under such conditions.
+However, when the point cloud is not affected by these limitations,
+the results have shown that optimisation-based normals estimation procedures constitute good candidates to overcome this issue.
+Also, like shape ﬁtting procedures, the STEP method faces limitations when dealing with irregular (non-circular) tree stem shapes
+since normal convergence is not observable. Second, two conditions are required for consistent reconstructions with the STEP
+method: (1) HS resolution for the x, y and z parameters must
+be at least twice the HS resolution for the radius parameter, and
+(2) HS radius resolution must be below than the radius of the
+smallest radius to be reconstructed. These two conditions ensure
+that score accumulation due to the convergence of the normals
+will be observed. Very ﬁne-scale resolution may not be adapted
+since the accumulation of scores in the HS can not be observed
+in such cases (because of errors on the normals or because of
+stem irregularities). The high dimensionality of the HS (4D) requires a large amount of memory, especially when the scene is
+large or the HS of high resolution. Thus, HS resolutions must be
+carefully adapted both to the input point cloud, as illustrated by
+the tests made on the fourth data set, and to computer performances. Third, the results analysis indicate that an a priori estimation about the number of tubular shapes to be reconstructed signiﬁcantly limits the running time of the algorithm. Unfortunately,
+this information is not always known and interferes with the
+principle of a fully automated method. Fourth, the STEP method
+does not reconstruct the topology of the scanned objects. Instead,
+it generates numerous independent non intersecting tuboids. Regardless, through our tests at this point, the STEP method has
+demonstrated capabilities to extract tubular shapes and measure trees attributes from TLS data acquired in various sampling
+conditions.
+The new developments that are presented here lead to several directions for future work. Indeed, a novel multi-scale approach could be set to improve eﬃciency of the STEP algorithm
+(both in running time and memory requirements). A more adapted
+growth stopping criterion could also increase the overall results.
+Finally, the next step for our algorithm is to handle the objects topology. The STEP algorithm can be used effectively even
+without these improvements. Hence, we plan to test it in operational contexts of forest inventory on diversiﬁed forest stand structures and ﬁnely assess its limitations before implementing further
+improvements.
+7. Conclusion
+We have proposed the STEP method as a new mathematical
+approach for reconstructing general tubular shapes with special
+attention to tree reconstructions from TLS data. We successfully
+extracted complex shapes from data affected by different levels
+of noise and subsampling, as well as tree stem taper from TLS
+
+data that were collected from forest plots. This method was developed to overcome the limitations of existing approaches, and especially for TLS acquisition in forest environment that hinder these
+approaches by their speciﬁcities (such as non-homogeneous sampling densities, signal occlusion and noise which are major issues
+in natural forest environments). We propose an original HT taking advantage of point normals to accelerate the computation and
+we deﬁned generalized growing open active contours to incorporate curve parametrisation in the data energy. We thus introduce
+a clear and robust mathematical framework for the STEP method
+that allows automatic complex tubular shapes reconstruction and
+in particular, stem taper estimation. Tubular shapes are recovered
+as a curve in the 4D Hough space, which enhances the coherence
+of the reconstruction process. Another major advantage of the STEP
+method is its ability to handle the complete point cloud of a scene
+(and especially a forest scene) without the need to isolate objects
+for their reconstruction. The method can be applied to any unstructured point cloud and proved to be eﬃcient for its favourite
+target, namely raw TLS point clouds, which are potentially composed of several aligned scans.
+The STEP method opens several promising perspectives for future developments. The mathematical framework that we have
+adopted and developed is ﬂexible, and therefore can be optimised
+for forest inventory or for other applications like the extraction of
+speciﬁc objects in urban or industrial scenes that have been acquired with TLS or photogrametry. An additional development will
+be to handle the structure of scanned objects. The current implementation of the method includes a non intersecting rule for
+the extracted tuboids. We actually expect to be able to design
+an appropriate method to connect and fuse some of the isolated
+tuboids into higher level objects and higher level representations.
+Furthermore, a multi-scale version of the STEP method is being
+designed to reduce the requirements of memory and computing
+time. Further tests are planned as the next steps towards validation within operational forest inventory. Finally, other tests should
+be performed within industrial and urban monitoring or reﬁnery
+reconstruction.
+References
+[1] Li G, Liu L, Zheng H, Mitra NJ. Analysis, reconstruction and manipulation using
+arterial snakes. ACM Trans Graph 2010;29(6). 152:1–152:10.
+[2] Martin T, Montes J, Bazin J-C, Popa T. Topology-aware Reconstruction of Thin
+Tubular Structures. Proceeding of the SA ’14 SIGGRAPH Asia 2014 Technical
+Briefs; 2014. p. 12:1—-12:4.
+[3] Li H, Yezzi A. Vessels as 4-d curves: Global minimal 4-d paths to extract 3-d
+tubular surfaces and centerlines. IEEE Trans Med Imaging 2007;26:1213–23.
+[4] Kerautret B, Krähenbühl A, Debled-Rennesson I, Lachaud J-O. 3D geometric
+analysis of tubular objects based on surface normal accumulation. Proceedings
+of the Image Analysis and Processing (ICIAP 2015), Genova, Italy, 9279; 2015.
+p. 319–31.
+[5] Tagliasacchi A, Zhang H, Cohen-Or D. Curve skeleton extraction from incomplete point cloud. ACM Trans Grap 2009;28(3):1. doi:10.1145/1531326.1531377.
+[6] Livny Y, Yan F, Olson M, Chen B, Zhang H, El-Sana J. Automatic reconstruction
+of tree skeletal structures from point clouds. ACM Trans Graph 2010;29(6):1–8.
+[7] Xu H, Gossett N, Chen B. Knowledge and heuristic-based modeling of laser-scanned trees. ACM Trans Graph 2007;26(4).
+[8] Dassot M, Constant T, Fournier M. The use of terrestrial LiDAR technology in
+forest science: Application ﬁelds, beneﬁts and challenges. Annals Forest Sci
+2011;68(5):959–74.
+[9] Pueschel P, Newnham G, Rock G, Udelhoven T, Werner W, Hill J. The inﬂuence
+of scan mode and circle ﬁtting on tree stem detection, stem diameter and volume extraction from terrestrial laser scans. ISPRS J Photogram Remote Sens
+2013;77:44–56.
+[10] Liang X, Kankare V, Hyyppä J, Wang Y, Kukko A, Haggrén H, et al. Terrestrial laser scanning in forest inventories. ISPRS J Photogram Remote Sens
+2016;115:63–77.
+[11] Brunner A, Gizachew B. Rapid detection of stand density, tree positions,
+and tree diameter with a 2D terrestrial laser scanner. Eur J Forest Res
+2014;133(5):819–31.
+[12] Kuusk A, Lang M, Märdla S, Pisek J. Tree stems from terrestrial laser scanner
+measurements. Forestry Stud 2015;63(1):44–55.
+[13] Brolly G, Kiraly G. Algorithms for stem mapping by means of terrestrial laser
+scanning.. Acta Silvatica et Lignaria Hungarica 2009;5:119–30.
+
+J. Ravaglia et al. / Computers & Graphics 66 (2017) 23–33
+[14] Bienert a, Maas H, Scheller S. Analysis of the information content of terrestrial
+laserscanner point clouds for the automatic determination of forest inventory
+parameters. Proceedings of the Workshop on 3D Remote Sensing in Forestry;
+2006. p. 1–7.
+[15] Raumonen P, Kaasalainen M, Åkerblom M, Kaasalainen S, Kaartinen H, Vastaranta M, et al. Fast automatic precision tree models from terrestrial laser
+scanner data. Remote Sens 2013;5(2):491–520.
+[16] Olofsson K, Holmgren J, Olsson H. Tree stem and height measurements
+using terrestrial laser scanning and the RANSAC algorithm. Remote Sens
+2014;6(5):4323–44.
+[17] Pfeifer N, Gorte B, Winterhalder D. Automatic reconstruction of single trees
+from terrestrial laser scanner data. In: Proceedings of 20th ISPRS Congress;
+2004. p. 114–19.
+[18] Othmani A, Piboule A, Krebs M, Stolz C. Towards automated and operational
+forest inventories with T-Lidar. In: SilviLaser; 2011. p. 1–9.
+[19] Pál I. Measurements of forest inventory parameters on terrestrial laser scanning data using digital geometry and topology. Proceedings of the The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences 2008;XXXVII(Part B3b):373–80.
+[20] Belton D, Moncrieff S, Chapman J. Processing tree point clouds using Gaussian Mixture Models. ISPRS Annals Photogram. Remote Sens. Spatial Inform.
+Sci. 2013;II-5/W2(November):43–8.
+[21] McDaniel M, Nishihata T, Brooks C, Salesses P, Iagnemma K. Terrain classiﬁcation and identiﬁcation of tree stems using ground based LiDAR. J Field Robot
+2012:1–49.
+[22] Kelbe D, Romanczyk P. Automatic extraction of tree stem models from single
+terrestrial LIDAR scans in structurally heterogeneous forest environments. Proceedings of Silvilaser; September, 2012. p. 1–8.
+[23] Pfeifer N, Winterhalder D. Modelling of tree cross sections from terrestrial
+laser scanning data with free-form curves. Int Arch Photogram Remote Sens
+Spatial Inform Sci 2004;36(8/W2):76–81.
+[24] Hildebrandt R, Iost A. From points to numbers: A database-driven approach
+to convert terrestrial LiDAR point clouds to tree volumes. Eur J Forest Res
+2012;131(6):1857–67.
+[25] Simonse M, Aschoff T, Spiecker H, Thies M. Automatic determination of forest
+inventory parameters using terrestrial laser scanning. In: Proceedings of the
+scandlaser scientiﬁc workshop on airborne laser scanning of forests, Vol. 2003;
+2003.
+[26] Schilling A, Schmidt A, Maas H-G. Automatic tree detection and diameter estimation in terrestrial laser scanner point clouds. In: Proceedings of the 16th
+Computer Vision Winter Workshop; 2011. p. 75–83.
+
+33
+
+[27] Hough PVC. Method and means for recognizing complex patterns. U.S. Patent
+No. 3,069,654. 18 Dec. 1962.
+[28] Ballard DH. Generalizing the Hough transform to detect arbitrary shapes. Pattern Recognit 1980;13(2):111–22.
+[29] Illingworth J, Kittler J. A survey of the hough transform. Comput Vis Graph
+Image Process 1988;44:87–116.
+[30] Suetake N, Uchino E, Hirata K. Generalized fuzzy Hough transform for
+detecting arbitrary shapes in a vague and noisy image. Soft Comput
+2006;10(12):1161–8.
+[31] Maitre H. Un panorama de la transformation de Hough. Traitement du Signal
+1985;2(4):305–17.
+[32] Mukhopadhyay P, Chaudhuri BB. A survey of Hough Transform. Pattern Recognit 2015;48(3):993–1010.
+[33] Kass M, Witkin A, Terzopoulos D. Snakes: Active contour models. Int J Comput
+Vis 1988;1(4):321–31.
+[34] Cohen LD. On active contour models and balloons. CVGIP Image Underst
+1991;53(2):211–18.
+[35] Williams DJ, Shah M. A Fast algorithm for active contours and curvature estimation. CVGIP: Image Underst 1992;55(1):14–26.
+[36] Xu C, Prince JL. Snakes, shapes, and gradient vector ﬂow. IEEE Trans Image
+Process 1998;7(3):359–69.
+[37] Klasing K, Althoff D, Wollherr D, Buss M. Comparison of surface normal estimation methods for range sensing applications. In: Proceedings of the IEEE
+International Conference on Robotics and Automation. IEEE; 2009. p. 3206–11.
+ISBN 978-1-4244-2788-8. doi:10.1109/ROBOT.2009.5152493.
+[38] Kimme C, Ballard D, Sklansky J. Finding circles by an array of accumulators.
+Commun ACM 1975;18(2):120–2. doi:10.1145/360666.360677.
+[39] Amanatides J, Woo A. A fast voxel traversal algorithm for ray tracing. Eurographics 1987;87(3):3–10.
+[40] Hackenberg. Last time accessed 4 june 2017, SimpleTree opendata page, http:
+//www.simpletree.uni-freiburg.de/openData.html.
+[41] Hackenberg J, Wassenberg M, Spiecker H, Sun D. Non destructive method for
+biomass prediction combining TLS derived tree volume and wood density.
+Forests 2015;6(4):1274–300.
+[42] Raumonen P, Casella E, Calders K, Murphy S, Åkerbloma M, Kaasalainen M.
+Massive-scale tree modelling from TLS data. ISPRS Annals of Photogram. Remote Sens. Spatial Inform. Sci. 2015;II-3/W4(March):189–96.
+
+

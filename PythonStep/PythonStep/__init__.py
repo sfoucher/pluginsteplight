@@ -14,6 +14,14 @@ from .utils import (
     sample_points_on_grid,
     create_grid_from_points
 )
+from .workflows import (
+    GridWorkflows,
+    GridVisualization,
+    OpenActiveContours,
+    ActiveContoursWorkflow,
+    ContourPoint,
+    GrowthDirection
+)
 
 __version__ = "0.1.0"
 __author__ = "Your Name"
@@ -28,4 +36,10 @@ __all__ = [
     "normalize_normals",
     "sample_points_on_grid",
     "create_grid_from_points",
+    "GridWorkflows",
+    "GridVisualization",
+    "OpenActiveContours",
+    "ActiveContoursWorkflow",
+    "ContourPoint",
+    "GrowthDirection",
 ] 
